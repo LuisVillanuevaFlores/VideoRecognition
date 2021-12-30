@@ -17,8 +17,8 @@
 
 - zip -g my-deployment-package.zip lambda_function.py
 
--zip -g my-deployment-package.zip resnet50_coco_best_v2.1.0.h5
+- zip -g my-deployment-package.zip resnet50_coco_best_v2.1.0.h5
 
 - zip -g my-deployment-package.zip video2.mp4
 
--El zip subirlo a S3
+- El zip subirlo a S3
