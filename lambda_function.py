@@ -1,8 +1,15 @@
 import json
+import boto3
 from imageai.Detection import VideoObjectDetection
 import os
 
 execution_path = os.getcwd()
+
+s3 = boto3.resource('s3',
+    aws_access_key_id=os.getenv('aws_access_key_id'),
+    aws_secret_access_key=os.getenv('aws_secret_access_key'),
+    region_name='us-west-2'
+)
 
 array = []
 def forSeconds(second_number, output_arrays, count_arrays, average_output_count):
@@ -14,27 +21,30 @@ def forSeconds(second_number, output_arrays, count_arrays, average_output_count)
     array.append({second_number:average_output_count})
 
 
-video_detector = VideoObjectDetection()
-video_detector.setModelTypeAsRetinaNet()
-video_detector.setModelPath(os.path.join(execution_path, "resnet50_coco_best_v2.1.0.h5"))
-video_detector.loadModel()
+def procesamiento(video):
+    s3.Object('video-processing-s3','videos/'+ video).download_file(video)
+    video_detector = VideoObjectDetection()
+    video_detector.setModelTypeAsRetinaNet()
+    video_detector.setModelPath(os.path.join(execution_path, "resnet50_coco_best_v2.1.0.h5"))
+    video_detector.loadModel()
 
+    video_detector.detectObjectsFromVideo(input_file_path=os.path.join(execution_path, video),
+            frames_per_second=30, per_second_function=forSeconds,  minimum_percentage_probability=30)
 
-video_detector.detectObjectsFromVideo(input_file_path=os.path.join(execution_path, "video2.mp4"),
-        output_file_path=os.path.join(execution_path, "resultado") ,
-        frames_per_second=30, per_second_function=forSeconds,  minimum_percentage_probability=30)
+    b = []
+    print(array)
+    for i in array:
+        aux = list(i.keys())
+        aux2 = list(i.values())
+        final = list(aux2[0].keys())
+        b.append({aux[0]:final})
+    return b
 
-b = []
-for i in array:
-    aux = list(i.keys())
-    aux2 = list(i.values())
-    final = list(aux2[0].keys())
-    b.append({aux[0]:final})
-
-
-def lambda_handler(event, context):
+def lambda_handler(event,context):
     # TODO implement
+    body = json.loads(event['body'])
+    response = procesamiento(body['video_name'])
     return {
         'statusCode': 200,
-        'body': json.dumps('Hello from Lambda!')
+        'body':  json.dumps(response)
     }
